@@ -10,7 +10,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path"
-	"time"
 )
 
 func CreateKubeConnection(filepath string) (*kubernetes.Clientset, error) {
@@ -27,19 +26,36 @@ func CreateKubeConnection(filepath string) (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func PollReplicasReady(clientset *kubernetes.Clientset, deployment *v1.Deployment, timeoutInSeconds int) error {
-	startTime := time.Now()
-	timeoutInMillis := int64(timeoutInSeconds * 1000)
+func PollNginxDeploymentStatus(kubeConnection *kubernetes.Clientset, deployment *v1.Deployment) (*v1.Deployment, error) {
 	for {
-		deployment, _ = clientset.AppsV1().Deployments(NAMESPACE).Update(context.Background(), deployment, metav1.UpdateOptions{})
-		if deployment.Status.Replicas == deployment.Status.ReadyReplicas {
-			fmt.Println(fmt.Sprintf("Deployment: %s successfully deployed. Wanted replicas: %v. Have replicas: %v", deployment.Name, deployment.Status.Replicas, deployment.Status.ReadyReplicas))
-			return nil
+		fmt.Println("Checking deployment status")
+		deployed, err := CheckNginxDeploymentIsReady(kubeConnection)
+		if err != nil {
+			fmt.Println("Successfully deployed nginx named: %s", deployment.Name)
+			return deployment, err
 		}
-		if time.Since(startTime).Milliseconds() > timeoutInMillis {
-			return errors.New("Deployment did not deploy ready in time.")
+		if deployed {
+			fmt.Println("Nginx deployed successfully")
+			return deployment, nil
 		}
 	}
+}
+
+func CheckNginxDeploymentIsReady(kubeconnection *kubernetes.Clientset) (bool, error) {
+	nginxDeployment, err := kubeconnection.AppsV1().Deployments(NAMESPACE).Get(context.Background(), "nginx-deployment", metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	if nginxDeployment != nil &&
+		nginxDeployment.Spec.Replicas != nil &&
+		*nginxDeployment.Spec.Replicas == nginxDeployment.Status.ReadyReplicas {
+		return true, nil
+	}
+	return false, nil
+}
+
+func GetLatestNginxDeployment(kubeConnection *kubernetes.Clientset) (*v1.Deployment, error) {
+	return kubeConnection.AppsV1().Deployments(NAMESPACE).Get(context.Background(), "nginx-deployment", metav1.GetOptions{})
 }
 
 type Args struct {

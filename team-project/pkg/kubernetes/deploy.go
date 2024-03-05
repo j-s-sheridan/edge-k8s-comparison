@@ -11,7 +11,7 @@ import (
 
 const NAMESPACE = "test-ns"
 
-func Start() (*kubernetes.Clientset, *v1.Deployment) {
+func Start() *kubernetes.Clientset {
 	args, err := GetCommandLineArgs()
 	if err != nil {
 		panic(err.Error())
@@ -20,20 +20,29 @@ func Start() (*kubernetes.Clientset, *v1.Deployment) {
 	if err != nil {
 		panic(err.Error())
 	}
-	deployment := deployNginx(kubeConnection)
-	return kubeConnection, deployment
+	UninstallNginx(kubeConnection)
+	_, err = deployNginx(kubeConnection)
+	if err != nil {
+		panic(err.Error())
+	}
+	return kubeConnection
 }
 
-func deployNginx(kubeConnection *kubernetes.Clientset) *v1.Deployment {
+func deployNginx(kubeConnection *kubernetes.Clientset) (*v1.Deployment, error) {
 	deployment, err := kubeConnection.AppsV1().Deployments(NAMESPACE).Create(context.Background(), createNginxDeploymentSpec(1), metav1.CreateOptions{})
+	fmt.Println(&deployment.Spec.Replicas)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to deploy nginx. Error was: %s", err))
+		return &v1.Deployment{}, err
 	}
-	if err := PollReplicasReady(kubeConnection, deployment, 10); err != nil {
-		panic(fmt.Sprintf("nginx failed to ready in time. %s", err.Error()))
+	return PollNginxDeploymentStatus(kubeConnection, deployment)
+}
+
+func UninstallNginx(kubeconnection *kubernetes.Clientset) error {
+	if err := kubeconnection.AppsV1().Deployments(NAMESPACE).Delete(context.Background(), "nginx-deployment", metav1.DeleteOptions{}); err != nil {
+		fmt.Println(fmt.Sprintf("Failed to delete nginx deployment. Error was: %s", err.Error()))
 	}
-	fmt.Println("Successfully deployed nginx named: %s", deployment.Name)
-	return deployment
+	fmt.Println("Successfully delete nginx deployment.")
+	return nil
 }
 
 func createNginxContainerSpec() []v12.Container {

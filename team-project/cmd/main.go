@@ -7,13 +7,11 @@ import (
 
 func main() {
 	fmt.Println("Starting...")
-	kubeConnection, deployment := kubernetes.Start()
+	kubernetes.Start()
+	kubeConnection := kubernetes.Start()
 	fmt.Println("nginx deployed.")
-	fmt.Println("Upgrading nginx.")
-	if err := kubernetes.UpgradeNginx(kubeConnection, deployment); err != nil {
-		panic(fmt.Sprintf("Upgrade failed. Error was: %s", err.Error()))
-	}
-	if err := kubernetes.DowngradeNginx(kubeConnection, deployment); err != nil {
-		panic(fmt.Sprintf("Downgrade failed. Error was: %s", err.Error()))
-	}
+	fmt.Println("Beginning upgrade / Downgrade endurance test")
+	enduranceTestResults := kubernetes.RunUpgradeDowngradeEnduranceTest(kubeConnection, 2)
+	fmt.Println(fmt.Sprintf("Performed a total of %v upgrades", len(enduranceTestResults.UpgradeTimes)))
+	fmt.Println(fmt.Sprintf("Performed a total of %v downgrades", len(enduranceTestResults.DowngradeTimes)))
 }
