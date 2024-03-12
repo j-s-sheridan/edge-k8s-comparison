@@ -26,10 +26,10 @@ func CreateKubeConnection(filepath string) (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-func PollNginxDeploymentStatus(kubeConnection *kubernetes.Clientset, deployment *v1.Deployment) (*v1.Deployment, error) {
+func PollNginxDeploymentStatus(kubeConnection *kubernetes.Clientset, deployment *v1.Deployment, expectedImage string) (*v1.Deployment, error) {
 	for {
 		fmt.Println("Checking deployment status")
-		deployed, err := CheckNginxDeploymentIsReady(kubeConnection)
+		deployed, err := CheckNginxDeploymentIsReady(kubeConnection, expectedImage)
 		if err != nil {
 			fmt.Println("Successfully deployed nginx named: %s", deployment.Name)
 			return deployment, err
@@ -41,10 +41,23 @@ func PollNginxDeploymentStatus(kubeConnection *kubernetes.Clientset, deployment 
 	}
 }
 
-func CheckNginxDeploymentIsReady(kubeconnection *kubernetes.Clientset) (bool, error) {
+func CheckNginxDeploymentIsReady(kubeconnection *kubernetes.Clientset, expectedImage string) (bool, error) {
 	nginxDeployment, err := kubeconnection.AppsV1().Deployments(NAMESPACE).Get(context.Background(), "nginx-deployment", metav1.GetOptions{})
+
 	if err != nil {
 		return false, err
+	}
+
+	podlist, err := kubeconnection.CoreV1().Pods(NAMESPACE).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	for _, pod := range podlist.Items {
+		for _, c := range pod.Spec.Containers {
+			if c.Image != expectedImage {
+				return false, nil
+			}
+		}
 	}
 	if nginxDeployment != nil &&
 		nginxDeployment.Spec.Replicas != nil &&

@@ -19,7 +19,7 @@ func UpgradeNginx(kubeConnection *kubernetes.Clientset) error {
 		fmt.Println("Upgrade failed. Error was: %s", err.Error())
 		return UpgradeNginx(kubeConnection)
 	}
-	if _, err := PollNginxDeploymentStatus(kubeConnection, deployment); err != nil {
+	if _, err := PollNginxDeploymentStatus(kubeConnection, deployment, "nginx:1.15.12"); err != nil {
 		fmt.Println("Failed to poll nginx deployment status")
 		return err
 	}
@@ -39,7 +39,7 @@ func DowngradeNginx(kubeConnection *kubernetes.Clientset) error {
 		fmt.Println("Downgrade failed. Error was: %s", err.Error())
 		return DowngradeNginx(kubeConnection)
 	}
-	if _, err := PollNginxDeploymentStatus(kubeConnection, deployment); err != nil {
+	if _, err := PollNginxDeploymentStatus(kubeConnection, deployment, "nginx:1.14.2"); err != nil {
 		fmt.Println("Failed to poll nginx deployment status")
 		return err
 	}

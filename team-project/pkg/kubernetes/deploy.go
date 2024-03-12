@@ -34,7 +34,7 @@ func deployNginx(kubeConnection *kubernetes.Clientset) (*v1.Deployment, error) {
 	if err != nil {
 		return &v1.Deployment{}, err
 	}
-	return PollNginxDeploymentStatus(kubeConnection, deployment)
+	return PollNginxDeploymentStatus(kubeConnection, deployment, "nginx:1.14.2")
 }
 
 func UninstallNginx(kubeconnection *kubernetes.Clientset) error {
